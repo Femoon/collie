@@ -16,6 +16,7 @@ import {
   type StyledLine,
   type WizardModel,
 } from "@/lib/blocks";
+import { reflowProse, terminalColumns } from "@/lib/prose-wrap";
 import { tableRuns, type TableRun } from "@/lib/table-run";
 import {
   alignImagesFromEnd,
@@ -323,18 +324,27 @@ export const AnsiOutput = memo(function AnsiOutput({
   // renders are Collie's own words, so this subscribes for the same reason every t() caller does.
   useLocale();
   const segments = useMemo(() => parseAnsi(text), [text]);
+  const physicalLines = useMemo(() => splitLines(segments), [segments]);
   const blocks = useMemo(
-    () => buildBlocks(splitLines(segments), { agent, grammars }),
-    [segments, agent, grammars],
+    () => buildBlocks(physicalLines, { agent, grammars }),
+    [physicalLines, agent, grammars],
   );
 
-  const rawBlocks = useMemo(
+  const physicalBlocks = useMemo(
     () =>
       dropLeadingLines(
         blocks.filter((b): b is RawBlock => b.kind === "raw"),
         hideLeadingLines,
       ),
     [blocks, hideLeadingLines],
+  );
+  // Reflow only presentation, after physical-row hiding and all harness grammars.
+  // Find, links and images below consume the same displayed lines as the renderer.
+  const rawBlocks = useMemo(
+    () => wrap && grammars && agent === "codex" && blocks.every((block) => block.kind === "raw")
+      ? reflowProse(physicalBlocks, terminalColumns(physicalLines))
+      : physicalBlocks,
+    [physicalBlocks, wrap, grammars, agent, blocks, physicalLines],
   );
   const promptBlock = useMemo(
     () => blocks.find((b): b is PromptBlock => b.kind === "prompt-select") ?? null,
