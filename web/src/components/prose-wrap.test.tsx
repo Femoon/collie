@@ -20,3 +20,8 @@ it('keeps the explicit raw-terminal mode verbatim even with a Codex identity', (
   const { container } = render(<AnsiOutput text={codexProseScreen} agent="codex" grammars={false} />);
   expect(container.querySelector('pre')?.textContent).toContain(codexProseRows.join('\n'));
 });
+
+it('does not reflow the same prose in another harness', () => {
+  const { container } = render(<AnsiOutput text={codexProseScreen} agent="agy" />);
+  expect(container.querySelector('pre')?.textContent).toContain(codexProseRows.join('\n'));
+});
